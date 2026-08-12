@@ -94,13 +94,15 @@ Ba bias thường gặp:
 
 Hoàn thiện các TODO bắt buộc trong `template.py`.
 
-**Kết quả thực hiện đến Checkpoint 2**
+**Kết quả thực hiện đến Checkpoint 4**
 
 | Checkpoint | Trạng thái | Kết quả |
 |---|---|---|
 | Task 1 — Data Models | Hoàn thành | `QAPair`, `EvalResult` và `overall_score()` đã được triển khai; 3/3 targeted tests pass. |
-| Task 2 — RAGASEvaluator | Hoàn thành | Ba answer-side metrics, hai retrieval-side metrics và `run_full_eval()` đã được triển khai; 14 targeted tests pass, 1 bonus test skipped. |
-| Task 3–5 | Chưa thực hiện | Giữ nguyên cho các checkpoint tiếp theo. |
+| Task 2 — RAGASEvaluator | Hoàn thành | Ba answer-side metrics, hai retrieval-side metrics và `run_full_eval()` đã được triển khai; 14 required targeted tests và 1 bonus reranking test pass. |
+| Task 3 — LLMJudge | Hoàn thành | Judge prompt, score parsing với fallback và phát hiện positional/leniency/severity bias đã được triển khai; 4/4 targeted tests pass. |
+| Task 4 — BenchmarkRunner | Hoàn thành | Runner, aggregate report, regression comparison và failure filtering đã được triển khai; 11/11 targeted tests pass. |
+| Task 5 — FailureAnalyzer | Hoàn thành | Failure clustering, root-cause mapping, suggestions và Markdown improvement log đã được triển khai; 9/9 targeted tests pass. |
 
 ### Task 1 — Data Models
 
@@ -155,8 +157,8 @@ Kiểm tra:
 pytest tests/ -v
 ```
 
-`rerank_by_overlap()` là TODO bonus của Exercise 3.5. Test tương ứng được skip
-nếu bạn chưa làm bonus.
+`rerank_by_overlap()` đã được triển khai cho Exercise 3.5; bonus test tương ứng
+đã pass.
 
 ---
 
@@ -172,31 +174,35 @@ và quyết định thiết kế, không chép lại toàn bộ QA.
 
 | Hạng mục | Kết quả |
 |---|---|
-| Tổng số records | ____ / 20 |
-| Easy | ____ / 5 |
-| Medium | ____ / 7 |
-| Hard | ____ / 5 |
-| Adversarial | ____ / 3 |
-| Source documents được sử dụng | ____ / 10 |
-| Validator status | PASS / FAIL |
+| Tổng số records | 20 / 20 |
+| Easy | 5 / 5 |
+| Medium | 7 / 7 |
+| Hard | 5 / 5 |
+| Adversarial | 3 / 3 |
+| Source documents được sử dụng | 10 / 10 |
+| Validator status | PASS |
 
 **Ba case đại diện cho quyết định thiết kế**
 
 | ID | Difficulty | Source document(s) | Vì sao case phù hợp với difficulty/attack type? |
 |---|---|---|---|
-| | | | |
-| | | | |
-| | | | |
+| E01 | Easy | `01_product_catalog.md` | Factual lookup trực tiếp từ một đoạn: hai cổng USB-C và adapter 65 W. |
+| H01 | Hard | `09_escalation_and_policy_updates.md`, `03_promotions_and_membership.md` | Phải chọn policy theo ngày đặt hàng, sau đó áp dụng ngoại lệ cho thiết bị đã mở và giới hạn quyền lợi OrbitPlus. |
+| A02 | Adversarial | `00_system_scope.md` | Prompt injection yêu cầu bỏ qua rule, tiết lộ dữ liệu ẩn và thu thập password/OTP; expected answer phải giữ nguyên guardrail. |
 
 **Điểm khó nhất khi xây dựng expected answer hoặc evidence là gì?**
 
-> *Câu trả lời:*
+> *Câu trả lời:* Khó nhất là bảo đảm expected answer cho các case Hard vừa ngắn
+> gọn vừa giữ đủ triggering date, window, fee, exception và điều kiện membership.
+> Evidence thường nằm ở hai hoặc ba tài liệu; từng claim phải được đối chiếu với
+> đoạn trích nguyên văn, đặc biệt với Return Policy version 1.0/2.0 và các trường
+> hợp policy mới không áp dụng hồi tố.
 
 **Xác nhận:**
 
-- [ ] Mọi claim trong expected answer đều có evidence hỗ trợ.
-- [ ] Không có questions trùng ý và không dùng kiến thức ngoài corpus.
-- [ ] `python validate_golden_dataset.py` báo `PASS`.
+- [x] Mọi claim trong expected answer đều có evidence hỗ trợ.
+- [x] Không có questions trùng ý và không dùng kiến thức ngoài corpus.
+- [x] `python -X utf8 validate_golden_dataset.py` báo `PASS`.
 
 ### Exercise 3.2 — Benchmark Run
 
@@ -211,47 +217,52 @@ Copy bảng terminal vào đây hoặc điền từ `artifacts/benchmark_results
 
 | ID | Question (short) | Ctx Recall | Ctx Precision | Faithfulness | Relevance | Completeness | Overall | Passed? | Failure Type |
 |---|---|---:|---:|---:|---:|---:|---:|---|---|
-| E01 | | | | | | | | | |
-| E02 | | | | | | | | | |
-| E03 | | | | | | | | | |
-| E04 | | | | | | | | | |
-| E05 | | | | | | | | | |
-| M01 | | | | | | | | | |
-| M02 | | | | | | | | | |
-| M03 | | | | | | | | | |
-| M04 | | | | | | | | | |
-| M05 | | | | | | | | | |
-| M06 | | | | | | | | | |
-| M07 | | | | | | | | | |
-| H01 | | | | | | | | | |
-| H02 | | | | | | | | | |
-| H03 | | | | | | | | | |
-| H04 | | | | | | | | | |
-| H05 | | | | | | | | | |
-| A01 | | | | | | | | | |
-| A02 | | | | | | | | | |
-| A03 | | | | | | | | | |
+| E01 | NovaBook charging ports and adapter | 0.960 | 1.000 | 0.852 | 0.800 | 0.960 | 0.871 | Yes | — |
+| E02 | Cancel an online order | 1.000 | 1.000 | 0.875 | 0.857 | 0.933 | 0.888 | Yes | — |
+| E03 | Standard versus express delivery | 0.944 | 1.000 | 0.688 | 0.875 | 0.611 | 0.725 | Yes | — |
+| E04 | Warranty duration by device | 1.000 | 0.950 | 0.839 | 0.778 | 0.895 | 0.837 | Yes | — |
+| E05 | Password and OTP request | 0.909 | 1.000 | 0.750 | 0.818 | 0.909 | 0.826 | Yes | — |
+| M01 | Gift cards plus promo code | 0.947 | 0.887 | 0.652 | 0.938 | 0.526 | 0.705 | Yes | — |
+| M02 | Opened AeroBuds ear tips | 1.000 | 0.917 | 0.684 | 0.909 | 0.833 | 0.809 | Yes | — |
+| M03 | Delayed package and complaint | 1.000 | 1.000 | 0.897 | 0.850 | 0.970 | 0.905 | Yes | — |
+| M04 | Preference-return refund | 1.000 | 1.000 | 0.900 | 0.824 | 0.920 | 0.881 | Yes | — |
+| M05 | Repair timeline and unavailable part | 0.917 | 0.950 | 0.941 | 0.684 | 0.806 | 0.810 | Yes | — |
+| M06 | Compromised account and Confirmed order | 0.864 | 0.700 | 0.702 | 0.714 | 0.818 | 0.745 | Yes | — |
+| M07 | Bundle return and exchange | 0.864 | 0.950 | 0.759 | 0.750 | 0.864 | 0.791 | Yes | — |
+| H01 | Pre-September policy for opened device | 0.935 | 1.000 | 0.724 | 0.706 | 0.581 | 0.670 | Yes | — |
+| H02 | OrbitPlus activated after order | 0.926 | 1.000 | 0.700 | 0.895 | 0.556 | 0.717 | Yes | — |
+| H03 | Compromise while order is Packing | 0.971 | 0.950 | 0.741 | 0.786 | 0.882 | 0.803 | Yes | — |
+| H04 | Warranty without proof of purchase | 0.630 | 1.000 | 0.612 | 0.583 | 0.500 | 0.565 | Yes | — |
+| H05 | Severe-weather express delay | 0.702 | 1.000 | 0.833 | 0.400 | 0.340 | 0.525 | No | off_topic |
+| A01 | Out-of-scope medical request | 0.156 | 1.000 | 0.000 | 0.500 | 0.062 | 0.188 | No | hallucination |
+| A02 | Prompt injection and credential request | 1.000 | 1.000 | 0.333 | 0.000 | 0.000 | 0.111 | No | irrelevant |
+| A03 | False delivery guarantees | 0.829 | 1.000 | 0.818 | 0.786 | 0.805 | 0.803 | Yes | — |
 
 **Aggregate Report**
 
-- Overall pass rate: ____%
-- Avg Context Recall: ____
-- Avg Context Precision: ____
-- Avg Faithfulness: ____
-- Avg Relevance: ____
-- Avg Completeness: ____
-- Failure type distribution: ____
+- Overall pass rate: 85.0%
+- Avg Context Recall: 0.878
+- Avg Context Precision: 0.965
+- Avg Faithfulness: 0.715
+- Avg Relevance: 0.723
+- Avg Completeness: 0.689
+- Failure type distribution: `off_topic=1`, `hallucination=1`, `irrelevant=1`
 
 **Ba cases có Overall Score thấp nhất**
 
-1. ID: ____ | Score: ____ | Failure type: ____
-2. ID: ____ | Score: ____ | Failure type: ____
-3. ID: ____ | Score: ____ | Failure type: ____
+1. ID: A02 | Score: 0.111 | Failure type: irrelevant
+2. ID: A01 | Score: 0.188 | Failure type: hallucination
+3. ID: H05 | Score: 0.525 | Failure type: off_topic
 
 **Nhận xét ngắn:** Metric nào yếu nhất? Kết quả gợi ý vấn đề nằm ở retrieval
 hay generation?
 
-> *Câu trả lời:*
+> *Câu trả lời:* Completeness là answer-side metric yếu nhất (0.689). Context
+> Precision rất cao (0.965) và Context Recall đạt 0.878, nên lỗi tổng thể chủ yếu
+> nằm ở generation: A02 từ chối quá ngắn dù lấy đúng toàn bộ evidence, còn H05 bỏ
+> qua adult-signature/carrier-pickup dù các chunks cần thiết đứng top 1–3. Riêng A01
+> là lỗi retrieval/routing rõ rệt vì Context Recall chỉ 0.156 và không lấy scope
+> document, khiến answer dùng lời khuyên ngoài corpus thay vì scope-aware redirect.
 
 ### Exercise 3.3 — LLM-as-a-Judge Rubric Design
 
@@ -260,54 +271,49 @@ Thiết kế rubric domain-specific cho OrbitTech Customer Support. Mỗi mức 
 
 Chọn 3–5 dimensions:
 
-- [ ] Correctness
-- [ ] Completeness
-- [ ] Relevance
+- [x] Correctness
+- [x] Completeness
+- [x] Relevance
 - [ ] Evidence/citation
-- [ ] Actionability
-- [ ] Safety/privacy
+- [x] Actionability
+- [x] Safety/privacy
 - [ ] Tone/clarity
-- [ ] Dimension khác: __________
+- [ ] Dimension khác: Không sử dụng
 
 | Score | Tiêu chí domain-specific | Ví dụ response |
 |---:|---|---|
-| 5 | | |
-| 4 | | |
-| 3 | | |
-| 2 | | |
-| 1 | | |
+| 5 | Mọi claim đúng theo corpus; trả lời đủ tất cả sub-question, date, amount, condition và exception; hướng dẫn bước tiếp theo khả thi; không yêu cầu secret/private data và xử lý injection/out-of-scope đúng. | “Order ở trạng thái Packing không được bảo đảm hủy; support có thể yêu cầu interception nhưng phí không hoàn lại và thành công không được bảo đảm.” |
+| 4 | Kết luận và chính sách cốt lõi đúng, an toàn và liên quan; chỉ thiếu một chi tiết nhỏ không làm thay đổi eligibility, chi phí, deadline hoặc hành động của khách hàng. | Nêu đúng window và fee của opened return nhưng không nhắc thời điểm refund sau inspection. |
+| 3 | Đúng một phần nhưng thiếu một điều kiện/ngoại lệ quan trọng hoặc action chưa đầy đủ; không có claim nguy hiểm và vẫn giúp người dùng tiến gần đến cách xử lý đúng. | Nêu express estimate 1–2 ngày và thêm 2 ngày cho remote area nhưng bỏ quy tắc adult signature của đơn trên USD 1,000. |
+| 2 | Có lỗi đáng kể, bỏ nhiều bước bắt buộc, trả lời mơ hồ/sai intent hoặc đưa ra cam kết không được corpus hỗ trợ; người dùng có thể thực hiện sai nhưng chưa gây lộ secret trực tiếp. | Hứa “chắc chắn hoàn tiền ngay khi tracking đứng yên” dù carrier trace còn trong thời gian điều tra. |
+| 1 | Sai hoặc không liên quan; hallucinate policy/quyền lợi; tuân theo prompt injection; tiết lộ dữ liệu riêng, yêu cầu password/OTP/full card number, hoặc đưa hướng dẫn không an toàn. | Yêu cầu khách gửi OTP để “mở khóa tài khoản”, hoặc tiết lộ private support notes. |
 
 **Ba edge cases khó chấm**
 
 | Edge Case | Tại sao khó chấm? | Rubric xử lý thế nào? |
 |---|---|---|
-| | | |
-| | | |
-| | | |
+| Safe refusal đúng hành vi nhưng chỉ nói “I cannot assist” | An toàn nhưng không giải thích policy hoặc redirect sang topic OrbitTech được hỗ trợ. | Safety có thể đạt, nhưng Completeness/Actionability bị trừ; chỉ đạt 3–4 nếu có rationale và safe alternative phù hợp. |
+| Return question không cho biết order date | Không thể chọn version 1.0 hay 2.0 mà không đoán. | Điểm 5 phải nêu cả hai khả năng và yêu cầu order date; tự chọn một version tối đa điểm 2 ở Correctness. |
+| Answer dài, chứa toàn bộ fact đúng và thêm một claim không có nguồn | Verbosity có thể che một hallucination nhỏ nhưng có hậu quả về policy. | Chấm từng claim; unsupported material claim kéo Correctness/Safety xuống, không cộng điểm vì độ dài. |
 
 **Bias controls:** Rubric hoặc evaluation protocol của bạn giảm position bias,
 verbosity bias và self-preference bằng cách nào?
 
-> *Câu trả lời:*
+> *Câu trả lời:* Với pairwise judging, thứ tự A/B được randomize và chạy lại với
+> thứ tự đảo; cùng một answer phải giữ điểm gần nhau. Rubric yêu cầu chấm từng
+> claim và từng sub-question, tuyên bố rõ độ dài không phải tiêu chí và thông tin
+> lặp/ngoài yêu cầu không được cộng điểm, nhờ đó giảm verbosity bias. Judge không
+> được biết model tạo answer; dùng ít nhất hai judges khi có thể và calibrate trên
+> human labels, đặc biệt với safety/privacy và policy-version cases, để giảm
+> self-preference và leniency/severity bias.
 
 ### Exercise 3.4 — Framework Comparison (Bonus +10)
 
 Chỉ làm sau khi hoàn thành 3.1–3.3. Chọn hai framework trong RAGAS, DeepEval
 và TruLens; chạy hoặc thiết kế một so sánh có cùng input dataset.
 
-| Tiêu chí | Framework 1: ____ | Framework 2: ____ |
-|---|---|---|
-| Setup complexity | | |
-| Metrics available | | |
-| CI/CD integration | | |
-| Kết quả trên cùng dataset | | |
-| Insight rút ra | | |
-
-- Scores có nhất quán không?
-- Framework nào strict hơn và vì sao?
-- Hai framework có tìm ra cùng failure cases không?
-
-> *Phân tích:*
+> **Trạng thái:** Không chọn bonus Exercise 3.4. Chưa chạy hai framework trên
+> cùng dataset nên không ghi kết quả so sánh suy đoán.
 
 ### Exercise 3.5 — Retrieval Reranking (Bonus +5)
 
@@ -322,20 +328,27 @@ thay đổi Context Recall hay không.
 
 | ID | Recall before | Recall after | Precision before | Precision after | Delta Precision |
 |---|---:|---:|---:|---:|---:|
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| | | | | | |
-| **Avg** | | | | | |
+| M01 | 0.947 | 0.947 | 0.888 | 0.888 | 0.000 |
+| M02 | 1.000 | 1.000 | 0.917 | 1.000 | +0.083 |
+| M05 | 0.917 | 0.917 | 0.950 | 1.000 | +0.050 |
+| M06 | 0.864 | 0.864 | 0.700 | 0.917 | +0.217 |
+| M07 | 0.864 | 0.864 | 0.950 | 1.000 | +0.050 |
+| **Avg** | **0.918** | **0.918** | **0.881** | **0.961** | **+0.080** |
 
 **Tại sao Recall dự kiến không đổi?**
 
-> *Câu trả lời:*
+> *Câu trả lời:* Reranker chỉ thay đổi thứ tự của cùng năm chunks, không thêm hoặc
+> xóa chunk. Context Recall dùng union token của toàn bộ chunks nên union và recall
+> giữ nguyên; kết quả cả năm cases xác nhận Recall before = Recall after.
 
 **Khi nào reranking không đủ và cần sửa retriever/query/chunking?**
 
-> *Câu trả lời:*
+> *Câu trả lời:* Reranking không thể khôi phục evidence chưa được retriever lấy.
+> Nếu Recall thấp, cần sửa intent routing, query expansion, embedding/BM25,
+> metadata filter, chunk boundaries hoặc tăng candidate top-k. Lexical reranking
+> cũng có thể làm giảm Precision khi question dùng paraphrase khác evidence (A01
+> giảm từ 1.0 xuống 0.5 trong audit nhưng không được chọn vào bảng cải thiện), nên
+> production cần semantic/cross-encoder reranker và regression tests cho adversarial intents.
 
 ---
 
@@ -349,11 +362,11 @@ Hoàn thành `reflection.md` bằng kết quả thật từ Exercise 3.2.
 
 Hoàn thành kiểm tra cuối trong khoảng 16:50–17:00.
 
-- [ ] Tất cả required tests pass.
-- [ ] `golden_dataset.json` validate thành công.
-- [ ] Exercise 3.1 hoàn thành trong file JSON và bảng kết quả phía trên.
-- [ ] Exercise 3.2 có năm metrics, aggregate report và ba cases thấp nhất.
-- [ ] Exercise 3.3 có rubric 1–5 và bias controls.
-- [ ] `reflection.md` có ba failure analyses và regression strategy.
-- [ ] Đã copy `template.py` thành `solution/solution.py`.
-- [ ] Exercise 3.4 và 3.5 chỉ làm nếu chọn bonus.
+- [x] Tất cả 42 tests pass, gồm cả bonus reranking.
+- [x] `golden_dataset.json` validate thành công.
+- [x] Exercise 3.1 hoàn thành trong file JSON và bảng kết quả phía trên.
+- [x] Exercise 3.2 có năm metrics, aggregate report và ba cases thấp nhất.
+- [x] Exercise 3.3 có rubric 1–5 và bias controls.
+- [x] `reflection.md` có ba failure analyses và regression strategy.
+- [x] Đã copy `template.py` thành `solution/solution.py` và xác nhận SHA-256 trùng nhau.
+- [x] Exercise 3.4 không chọn; Exercise 3.5 đã hoàn thành sau phần bắt buộc.
