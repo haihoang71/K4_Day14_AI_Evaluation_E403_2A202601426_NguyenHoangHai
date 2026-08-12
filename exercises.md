@@ -30,11 +30,11 @@ critical.
 
 | Metric | Acceptable Low Score Scenario | Critical Low Score Scenario | Action Required |
 |---|---|---|---|
-| Faithfulness | | | |
-| Answer Relevance | | | |
-| Context Recall | | | |
-| Context Precision | | | |
-| Completeness | | | |
+| Faithfulness | Câu trả lời có phần diễn giải hoặc chào hỏi không xuất hiện nguyên văn trong context nhưng các khẳng định chính vẫn có nguồn; score 0.6–0.8 có thể chấp nhận tạm thời. | Score < 0.6 ở câu hỏi chính sách, thanh toán, bảo hành; đặc biệt khi answer đưa ra điều kiện hoặc cam kết không có trong nguồn. | Kiểm tra grounding theo từng claim, bổ sung citation, siết prompt chỉ trả lời từ context và chặn deploy nếu lỗi liên quan chính sách. |
+| Answer Relevance | Câu hỏi mở hoặc cần giải thích nhiều bước khiến answer chứa thêm thông tin hữu ích; score 0.6–0.8 nhưng vẫn giải quyết đúng intent. | Score < 0.6 do trả lời sai intent, lạc sang sản phẩm/chính sách khác hoặc không trả lời câu hỏi trực tiếp. | Cải thiện intent routing và prompt, thêm test theo category, rút gọn phần ngoài yêu cầu. |
+| Context Recall | Một câu hỏi đơn giản vẫn được trả lời đúng từ một chunk dù gold answer có vài chi tiết phụ; score hơi thấp có thể theo dõi. | Score < 0.6 khi thiếu điều kiện, ngoại lệ, mốc thời gian hoặc evidence bắt buộc để tạo câu trả lời đúng. | Điều chỉnh chunking/query expansion/top-k, bổ sung metadata filter và kiểm tra coverage của source documents. |
+| Context Precision | Relevant evidence vẫn có trong top-k nhưng đứng sau một vài chunk nhiễu; answer cuối vẫn đúng nên có thể chấp nhận tạm thời. | Score < 0.6 làm context window bị lấp bởi nhiễu, relevant chunks xếp quá muộn hoặc generator dùng nhầm chính sách. | Thêm reranker, cải thiện embedding/query, lọc metadata và đo Precision theo từng vị trí. |
+| Completeness | Answer đúng phần cốt lõi nhưng thiếu chi tiết tùy chọn hoặc hướng dẫn bổ sung ít ảnh hưởng; score 0.6–0.8. | Score < 0.6 vì bỏ sót bước bắt buộc, điều kiện eligibility, ngoại lệ, phí hoặc deadline. | Dùng checklist theo loại câu hỏi, cải thiện retrieval recall và yêu cầu generator đối chiếu đủ các ý trong evidence. |
 
 ### Exercise 1.2 — Bias trong LLM-as-a-Judge
 
@@ -46,15 +46,28 @@ Ba bias thường gặp:
 
 **Câu 1: Thiết kế experiment phát hiện position bias với ít nhất hai conditions.**
 
-> *Câu trả lời:*
+> *Câu trả lời:* Chuẩn bị các cặp answer A/B đã được human chấm và có chất lượng
+> tương đương hoặc biết trước answer tốt hơn. Condition 1 cho judge xem A trước,
+> B sau; Condition 2 đảo thứ tự B trước, A sau, đồng thời giữ nguyên prompt,
+> rubric, model và tham số sinh. Chạy nhiều cặp, randomize thứ tự và so sánh tỷ lệ
+> thắng/điểm của cùng một answer giữa hai condition. Nếu answer đứng đầu nhận điểm
+> cao hơn một cách có ý nghĩa thống kê bất kể nội dung, judge có position bias.
 
 **Câu 2: Làm thế nào giảm verbosity bias bằng rubric design?**
 
-> *Câu trả lời:*
+> *Câu trả lời:* Rubric phải tách correctness, completeness, relevance và clarity;
+> mô tả rõ rằng độ dài không phải tiêu chí, thông tin lặp hoặc ngoài yêu cầu không
+> được cộng điểm và có thể bị trừ ở relevance/conciseness. Mỗi mức 1–5 cần có
+> anchor theo số ý đúng, số lỗi và mức độ bao phủ evidence. Có thể yêu cầu judge
+> trích các claim đáp ứng tiêu chí trước khi cho điểm để buộc điểm dựa trên nội dung.
 
 **Câu 3: Tại sao cần calibrate LLM judge với human labels?**
 
-> *Câu trả lời:*
+> *Câu trả lời:* Human labels là mốc tham chiếu để đo judge có thực sự phản ánh
+> tiêu chuẩn nghiệp vụ hay chỉ nhất quán với thiên kiến của model. Calibration giúp
+> chọn rubric/threshold, phát hiện leniency, severity, position và self-preference
+> bias, đồng thời đo agreement với chuyên gia. Với các case bất đồng hoặc rủi ro cao,
+> human review vẫn là quyết định cuối cùng.
 
 ### Exercise 1.3 — Evaluation trong CI/CD
 
@@ -62,19 +75,32 @@ Ba bias thường gặp:
 
 | Metric | Threshold | Lý do |
 |---|---:|---|
-| Faithfulness | | |
-| Answer Relevance | | |
-| Completeness | | |
+| Faithfulness | 0.80 | Hallucination có thể tạo cam kết sai về giá, đổi trả hoặc bảo hành; đây là quality gate nghiêm ngặt nhất. |
+| Answer Relevance | 0.70 | Answer phải giải quyết đúng intent nhưng vẫn cho phép một lượng nhỏ hướng dẫn bổ sung hữu ích. |
+| Completeness | 0.75 | Cần bao phủ phần lớn điều kiện và các bước bắt buộc; thiếu chi tiết nhỏ chưa nhất thiết phải chặn release. |
 
 **Câu 2: Khi nào dùng offline evaluation, online evaluation và human review?**
 
-> *Câu trả lời:*
+> *Câu trả lời:* Dùng **offline evaluation** trên golden dataset cho mọi thay đổi
+> code, prompt, model, retriever và trước release để phát hiện regression có thể tái
+> lập. Dùng **online evaluation** sau triển khai để theo dõi traffic thật, drift,
+> latency, cost, feedback và các intent chưa có trong dataset. Dùng **human review**
+> để hiệu chỉnh LLM judge, xử lý case bất đồng/khó, audit mẫu định kỳ và duyệt các
+> câu trả lời rủi ro cao liên quan thanh toán, quyền riêng tư, bảo hành hoặc escalation.
 
 ---
 
 ## Part 2 — Core Coding (14:45–15:40)
 
 Hoàn thiện các TODO bắt buộc trong `template.py`.
+
+**Kết quả thực hiện đến Checkpoint 2**
+
+| Checkpoint | Trạng thái | Kết quả |
+|---|---|---|
+| Task 1 — Data Models | Hoàn thành | `QAPair`, `EvalResult` và `overall_score()` đã được triển khai; 3/3 targeted tests pass. |
+| Task 2 — RAGASEvaluator | Hoàn thành | Ba answer-side metrics, hai retrieval-side metrics và `run_full_eval()` đã được triển khai; 14 targeted tests pass, 1 bonus test skipped. |
+| Task 3–5 | Chưa thực hiện | Giữ nguyên cho các checkpoint tiếp theo. |
 
 ### Task 1 — Data Models
 
