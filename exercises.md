@@ -312,8 +312,83 @@ verbosity bias và self-preference bằng cách nào?
 Chỉ làm sau khi hoàn thành 3.1–3.3. Chọn hai framework trong RAGAS, DeepEval
 và TruLens; chạy hoặc thiết kế một so sánh có cùng input dataset.
 
-> **Trạng thái:** Không chọn bonus Exercise 3.4. Chưa chạy hai framework trên
-> cùng dataset nên không ghi kết quả so sánh suy đoán.
+**Framework được so sánh:** RAGAS `0.4.3` và DeepEval `4.1.7`.
+
+**Phương pháp kiểm soát**
+
+1. Dùng đúng cùng 20 records trong `golden_dataset.json` và cùng năm retrieved
+   chunks đã được xếp hạng cho mỗi record trong `artifacts/actual_answers.json`.
+2. So sánh cùng một khái niệm retrieval: rank-aware Context Precision/Average
+   Precision. RAGAS chạy `NonLLMContextPrecisionWithReference`; DeepEval chạy
+   `ContextualPrecisionMetric`.
+3. Giữ judge cố định và chạy hoàn toàn offline: một chunk được gán relevant khi
+   nó chứa ít nhất 65% tập token của ít nhất một gold evidence context. DeepEval
+   nhận chính các binary verdict này qua custom local model; RAGAS nhận cùng luật
+   qua custom distance metric. Cách này cô lập khác biệt framework/aggregation,
+   tránh nhiễu do hai LLM judge khác prompt và không gửi dataset ra dịch vụ ngoài.
+4. Dùng quality gate `Context Precision >= 0.90`. Điểm được làm tròn ba chữ số
+   trong bảng; kết quả thô lưu tại `artifacts/bonus_ragas_results.json` và
+   `artifacts/bonus_deepeval_results.json`.
+
+Theo tài liệu chính thức, [RAGAS Context Precision](https://docs.ragas.io/en/v0.1.21/concepts/metrics/context_precision.html)
+và [DeepEval Contextual Precision](https://deepeval.com/docs/metrics-contextual-precision)
+đều thưởng việc đưa context relevant lên rank cao, nên đây là cặp metric tương
+đương hợp lý cho controlled comparison.
+
+**Kết quả trên cùng input**
+
+| ID | RAGAS CP | DeepEval CP | Chênh lệch sau làm tròn |
+|---|---:|---:|---:|
+| E01 | 1.000 | 1.000 | 0.000 |
+| E02 | 1.000 | 1.000 | 0.000 |
+| E03 | 1.000 | 1.000 | 0.000 |
+| E04 | 1.000 | 1.000 | 0.000 |
+| E05 | 1.000 | 1.000 | 0.000 |
+| M01 | 1.000 | 1.000 | 0.000 |
+| M02 | 1.000 | 1.000 | 0.000 |
+| M03 | 1.000 | 1.000 | 0.000 |
+| M04 | 1.000 | 1.000 | 0.000 |
+| M05 | 1.000 | 1.000 | 0.000 |
+| M06 | 1.000 | 1.000 | 0.000 |
+| M07 | 1.000 | 1.000 | 0.000 |
+| H01 | 0.750 | 0.750 | 0.000 |
+| H02 | 0.917 | 0.917 | 0.000 |
+| H03 | 1.000 | 1.000 | 0.000 |
+| H04 | 0.833 | 0.833 | 0.000 |
+| H05 | 1.000 | 1.000 | 0.000 |
+| A01 | 0.000 | 0.000 | 0.000 |
+| A02 | 1.000 | 1.000 | 0.000 |
+| A03 | 1.000 | 1.000 | 0.000 |
+| **Trung bình** | **0.925** | **0.925** | **0.000** |
+
+| Tiêu chí | RAGAS | DeepEval | Nhận xét thực nghiệm |
+|---|---|---|---|
+| Độ phức tạp setup | Dataset/sample và metric tách rời; non-LLM metric nhận custom distance measure trực tiếp. | `LLMTestCase` + metric; để tái dùng verdict offline cần custom `DeepEvalBaseLLM`. | RAGAS ngắn hơn cho phép đo dataset/retrieval offline này; hai bản cài có dependency transitives xung đột nên thí nghiệm dùng hai virtual environment. |
+| Metrics sẵn có | Có nhóm retrieval và generation như context precision/recall, faithfulness và response relevancy. | Có contextual precision/recall, answer relevancy, faithfulness và nhiều metric test-case khác. | Cả hai đủ cho RAG; chọn metric tương đương quan trọng hơn số lượng metric. |
+| CI/CD | Có thể gọi evaluation/metric rồi tự áp quality gate trong pipeline. | Có `assert_test()` và `deepeval test run` theo workflow pytest. | DeepEval thuận tiện hơn nếu đội ngũ muốn evaluation dưới dạng unit test/quality gate có sẵn. |
+| Khả năng mở rộng | Custom metric/distance và dataset evaluation linh hoạt. | Custom model, metric và test case linh hoạt; API thiên về testing. | Cả hai đều mở rộng được, nhưng abstraction khác nhau. |
+| Kết quả controlled run | Avg 0.925; pass 17/20. | Avg 0.925; pass 17/20. | Pearson/Spearman = 1.000; sai khác lớn nhất ở số thô chỉ khoảng `1e-10` do RAGAS thêm epsilon chống chia cho 0. |
+
+DeepEval mô tả trực tiếp cách đưa metric vào pytest/CI bằng `assert_test()` và
+`deepeval test run` trong [hướng dẫn CI/CD](https://deepeval.com/docs/evaluation-unit-testing-in-ci-cd),
+trong khi [RAGAS evaluation guide](https://docs.ragas.io/en/v0.1.21/getstarted/evaluation.html)
+phân nhóm Context Precision/Recall cho retriever và Faithfulness/Answer Relevance
+cho generator.
+
+**Các câu hỏi kết luận**
+
+- **Điểm số có nhất quán không?** Có. Hai vector điểm trùng nhau đến sáu chữ số
+  thập phân, tương quan Pearson và Spearman đều bằng 1.000.
+- **Framework nào “khắt khe” hơn?** Không framework nào trong controlled run:
+  cùng relevance verdict và cùng công thức rank-aware AP tạo cùng điểm. Nếu dùng
+  default LLM judge, mức khắt khe còn phụ thuộc model, prompt, threshold và độ
+  bất định của lần gọi, nên không thể quy kết cho tên framework từ một lần chạy.
+- **Có phát hiện cùng failure cases không?** Có. Với gate 0.90, cả hai cùng fail
+  `H01` (0.750), `H04` (0.833) và `A01` (0.000); 17/20 cases còn lại pass.
+- **Hạn chế:** Thí nghiệm chỉ so sánh một retrieval metric với gold evidence và
+  deterministic judge; nó chưa đo độ ổn định/chi phí của LLM-as-a-judge hay các
+  answer-side metrics. Đây là lựa chọn có chủ đích để so sánh framework công bằng
+  và tái lập được trên dữ liệu hiện có.
 
 ### Exercise 3.5 — Retrieval Reranking (Bonus +5)
 
@@ -369,4 +444,4 @@ Hoàn thành kiểm tra cuối trong khoảng 16:50–17:00.
 - [x] Exercise 3.3 có rubric 1–5 và bias controls.
 - [x] `reflection.md` có ba failure analyses và regression strategy.
 - [x] Đã copy `template.py` thành `solution/solution.py` và xác nhận SHA-256 trùng nhau.
-- [x] Exercise 3.4 không chọn; Exercise 3.5 đã hoàn thành sau phần bắt buộc.
+- [x] Exercise 3.4 và Exercise 3.5 đã hoàn thành sau phần bắt buộc.

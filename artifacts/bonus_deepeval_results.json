@@ -1,0 +1,90 @@
+{
+  "framework": "deepeval",
+  "version": "4.1.7",
+  "metric": "ContextualPrecisionMetric",
+  "judge": "offline gold-context token containment",
+  "relevance_threshold": 0.65,
+  "quality_gate": 0.9,
+  "results": [
+    {
+      "id": "E01",
+      "score": 1.0
+    },
+    {
+      "id": "E02",
+      "score": 1.0
+    },
+    {
+      "id": "E03",
+      "score": 1.0
+    },
+    {
+      "id": "E04",
+      "score": 1.0
+    },
+    {
+      "id": "E05",
+      "score": 1.0
+    },
+    {
+      "id": "M01",
+      "score": 1.0
+    },
+    {
+      "id": "M02",
+      "score": 1.0
+    },
+    {
+      "id": "M03",
+      "score": 1.0
+    },
+    {
+      "id": "M04",
+      "score": 1.0
+    },
+    {
+      "id": "M05",
+      "score": 1.0
+    },
+    {
+      "id": "M06",
+      "score": 1.0
+    },
+    {
+      "id": "M07",
+      "score": 1.0
+    },
+    {
+      "id": "H01",
+      "score": 0.75
+    },
+    {
+      "id": "H02",
+      "score": 0.9166666666666666
+    },
+    {
+      "id": "H03",
+      "score": 1.0
+    },
+    {
+      "id": "H04",
+      "score": 0.8333333333333333
+    },
+    {
+      "id": "H05",
+      "score": 1.0
+    },
+    {
+      "id": "A01",
+      "score": 0.0
+    },
+    {
+      "id": "A02",
+      "score": 1.0
+    },
+    {
+      "id": "A03",
+      "score": 1.0
+    }
+  ]
+}
